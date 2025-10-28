@@ -17,7 +17,7 @@ app.post("/analyze-intent", async (req: { body: { prompt: any; }; }, res: { stat
       return res.status(400).json({ error: "Prompt is required" });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const analysisPrompt = `
 You are an expert code analysis assistant. Analyze the following user prompt related to code error detection and debugging.
