@@ -1,15 +1,23 @@
 const express = require("express");
+const cors = require("cors");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const app = express();
+
+// ✅ Enable CORS for all routes
+app.use(cors({
+  origin: "*", // You can replace "*" with specific origins for security
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 
 app.use(express.json());
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-app.get("/", ( _req: any , res: { send: (arg0: string) => any; }) => res.send("Code Error Detection API - Ready"));
+app.get("/", (_req:any, res:any) => res.send("Code Error Detection API - Ready"));
 
-app.post("/analyze-intent", async (req: { body: { prompt: any; }; }, res: { status: (arg0: number) => { (): any; new(): any; json: { (arg0: { error: string; rawResponse?: any; message?: any; }): void; new(): any; }; }; json: (arg0: { success: boolean; prompt: any; analysis: any; timestamp: string; }) => void; }) => {
+app.post("/analyze-intent", async (req:any, res:any) => {
   try {
     const { prompt } = req.body;
 
@@ -17,7 +25,7 @@ app.post("/analyze-intent", async (req: { body: { prompt: any; }; }, res: { stat
       return res.status(400).json({ error: "Prompt is required" });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
 
     const analysisPrompt = `
 You are an expert code analysis assistant. Analyze the following user prompt related to code error detection and debugging.
@@ -78,18 +86,16 @@ Provide accurate analysis based on the prompt content.`;
     // Parse the JSON response from Gemini
     let intentAnalysis;
     try {
-      // Remove markdown code blocks if present
       const cleanedText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       intentAnalysis = JSON.parse(cleanedText);
     } catch (parseError) {
       console.error("Error parsing Gemini response:", parseError);
-      return res.status(500).json({ 
-        error: "Failed to parse AI response", 
-        rawResponse: text 
+      return res.status(500).json({
+        error: "Failed to parse AI response",
+        rawResponse: text
       });
     }
 
-    // Return the structured intent analysis
     res.json({
       success: true,
       prompt: prompt,
@@ -99,9 +105,9 @@ Provide accurate analysis based on the prompt content.`;
 
   } catch (error:any) {
     console.error("Error analyzing intent:", error);
-    res.status(500).json({ 
-      error: "Failed to analyze intent", 
-      message: error?.message??"" 
+    res.status(500).json({
+      error: "Failed to analyze intent",
+      message: error?.message ?? ""
     });
   }
 });
