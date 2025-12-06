@@ -1,79 +1,317 @@
-https://intent-agent.vercel.app/analyze-intent
 
-request example:
+
+# 🚀 **Intent Classification Service**
+
+The **Intent Classification Service** converts natural-language monitoring requests into structured machine-readable *Intent Objects* using **Google Gemini 1.5 Flash**.
+
+It serves as the **Intent Agent** in your AI-powered multi-agent observability pipeline:
+
+```
+User Prompt → Intent Agent → Data Agent → Analysis Agent → Report Agent
+```
+
+This service is built with:
+
+* **Node.js + Express**
+* **TypeScript**
+* **Google Gemini 1.5 Flash**
+* **Strict JSON-mode prompting**
+* **Error-safe output cleaning & validation**
+
+---
+
+# 📁 **Project Structure**
+
+```
+api/
+├── app.ts                     → Express App
+├── index.ts                   → app.listen entry point
+│
+├── config/
+│   └── geminiClient.ts        → Gemini API client setup
+│
+├── controllers/
+│   └── intent.controller.ts   → Handles classify requests
+│
+├── services/
+│   └── intentService.ts       → Gemini-powered classification logic
+│
+├── constants/
+│   └── intentSchema.ts        → Full taxonomy (6 classes + subclasses)
+│
+├── middlewares/
+│   ├── errorHandler.ts
+│   └── requestLogger.ts
+│
+└── types/
+    └── intent.types.ts        → TS interfaces for request & response
+```
+
+---
+
+# ⚙️ **Setup**
+
+### 1. Install dependencies
+
+```sh
+npm install
+```
+
+### 2. Add environment variables
+
+Create a `.env` file:
+
+```env
+GEMINI_API_KEY=your_google_api_key_here
+PORT=3000
+```
+
+### 3. Start the server
+
+```sh
+npm run dev
+```
+
+Server runs at:
+
+```
+http://localhost:3000
+```
+
+---
+
+# 🔌 **API Endpoints**
+
+## **GET /**
+
+Root check.
+
+**Response:**
+
+```json
 {
-"prompt":"detect errors"
+  "message": "Intent-Agent API running",
+  "endpoints": {
+    "health": "/health",
+    "classify": "/v1/intent/classify"
+  }
 }
+```
 
-response example:
+---
+
+## **GET /health**
+
+**Response:**
+
+```json
+{ "status": "ok" }
+```
+
+---
+
+## **POST /v1/intent/classify**
+
+The main endpoint that produces a structured *Intent Object*.
+
+### **Request Body**
+
+```json
+{
+  "prompt": "Monitor for brute-force login attempts.",
+  "mode": "online",
+  "locale": "en",
+  "organizationContext": {
+    "orgType": "enterprise",
+    "environment": "prod",
+    "logSources": ["vpn", "auth", "firewall"]
+  }
+}
+```
+
+### Request Fields:
+
+| Field                 | Type                 | Required | Description                         |
+| --------------------- | -------------------- | -------- | ----------------------------------- |
+| `prompt`              | string               | ✔        | Natural-language monitoring request |
+| `mode`                | "online" | "offline" | ❌        | Default: "online"                   |
+| `locale`              | string               | ❌        | Language hint                       |
+| `organizationContext` | object               | ❌        | Helps refine classification         |
+
+---
+
+# 📄 **Intent Response Format**
+
+Example response:
+
+```json
 {
   "success": true,
-  "prompt": "detect errors",
-  "analysis": {
-    "intent": {
-      "primary": "find_errors",
-      "secondary": [
-        "check_syntax",
-        "improve_code",
-        "understand_bug"
-      ],
-      "confidence": 0.95
-    },
-    "errorType": {
-      "categories": [
-        "syntax",
-        "runtime",
-        "logical",
-        "semantic",
-        "unknown"
-      ],
-      "expectedSeverity": "unknown",
-      "confidence": 0.1
-    },
-    "context": {
-      "language": null,
-      "framework": null,
-      "environment": null,
-      "specificTechnology": []
-    },
-    "scope": {
-      "targetArea": "unknown",
-      "filePattern": null,
-      "inclusionCriteria": [],
-      "exclusionCriteria": []
-    },
-    "actionRequired": {
-      "type": "scan_and_report",
-      "priority": "normal",
-      "outputFormat": "unknown"
-    },
-    "userExpertiseLevel": {
-      "estimated": "unknown",
-      "indicators": [
-        "brevity",
-        "lack of technical detail"
-      ],
-      "confidence": 0.4
-    },
-    "keywords": {
-      "technical": [
-        "errors"
-      ],
-      "actionVerbs": [
-        "detect"
-      ],
-      "errorIndicators": [
-        "errors"
-      ]
-    },
-    "ambiguityScore": 0.95,
-    "suggestedClarifications": [
-      "Please provide the code you want me to check for errors.",
-      "What programming language is the code written in?",
-      "Are you seeing any specific error messages or unexpected behavior?",
-      "What kind of errors are you looking for (e.g., syntax errors, logical bugs, security vulnerabilities)?"
+  "timestamp": "2025-02-15T12:34:56.000Z",
+  "data": {
+    "intent_class_id": "security",
+    "intent_class_label": "Security Intent",
+    "candidate_subclasses": ["Brute Force Attack Detection"],
+    "confidence": 0.92,
+
+    "analysis_goals": [
+      "Detect repeated authentication failures",
+      "Identify high-risk login attempts"
     ],
-    "overallConfidence": 0.3
-  },
-  "timestamp": "2025-10-26T10:16:53.002Z"
+
+    "suggested_filters": {
+      "time_window": "last 1h",
+      "entities": ["ip", "user"],
+      "log_sources": ["auth", "vpn"]
+    },
+
+    "metrics_of_interest": [
+      "failed_login_count",
+      "unique_failed_sources"
+    ],
+
+    "analysis_techniques": [
+      "Anomaly Detection",
+      "Correlation Analysis"
+    ],
+
+    "mode": "online",
+
+    "reporting": {
+      "summary_scale": ["Good", "Warning", "Bad"],
+      "priority": "High",
+      "notes_for_report_agent": "Escalate if failure events exceed threshold"
+    },
+
+    "reasoning": "Multiple login failures imply brute force patterns."
+  }
 }
+```
+
+---
+
+# 🧠 **How the Model Works**
+
+The service uses:
+
+```
+gemini-1.5-flash-latest
+```
+
+with **strict JSON-only output**:
+
+```ts
+generationConfig: {
+  response_mime_type: "application/json",
+  temperature: 0.2
+}
+```
+
+It also:
+
+* Removes ``` fences
+* Removes markdown
+* Validates JSON
+* Throws clean errors
+
+---
+
+# 🧩 **Intent Taxonomy Overview**
+
+Your taxonomy includes 6 major intent classes:
+
+1. **Security Intent**
+2. **Performance Intent**
+3. **Availability & Reliability Intent**
+4. **Compliance & Audit Intent**
+5. **Usage & Analytics Intent**
+6. **Operational & Infrastructure Intent**
+
+Each class contains 8–20+ deeply detailed subclasses (from your classification research PDF).
+
+---
+
+# 🧪 **Example Prompts**
+
+### Security:
+
+> “Alert when multiple failed logins occur from the same IP.”
+
+### Performance:
+
+> “Detect spikes in API latency beyond 500ms.”
+
+### Compliance:
+
+> “Monitor unauthorized access to PHI records.”
+
+### Operational:
+
+> “Identify Kubernetes pods entering CrashLoopBackoff.”
+
+---
+
+# ❗ Error Handling
+
+Errors return structured JSON:
+
+```json
+{
+  "success": false,
+  "message": "Gemini returned invalid JSON. Check logs for raw output."
+}
+```
+
+This happens if:
+
+* Gemini outputs markdown
+* JSON is malformed
+* Model API returns 4xx or 5xx
+
+Your service logs the *raw Gemini output* for debugging.
+
+---
+
+# 📦 Postman Collection
+
+A full Postman collection with all endpoints and example payloads is available.
+
+Ask:
+
+> “generate postman collection again”
+
+---
+
+# 🔥 Production Considerations
+
+* Use **Gemini JSON Mode** for guaranteed parsing
+* Validate inputs using **Zod** or similar schema tools
+* Add rate limiting for protection
+* Host easily on:
+
+  * Render
+  * Railway
+  * Fly.io
+  * Docker
+  * Local machine
+* Vercel not recommended unless using serverless pattern
+
+---
+
+# ❤️ Contributing
+
+Feel free to submit issues or enhancements:
+
+* Optimization of intent prompts
+* Expansion of taxonomy
+* Additional agents (data / analysis / report)
+* Streaming model support
+
+---
+
+# 📜 License
+
+MIT License — free for personal and commercial use.
+
+---
+
