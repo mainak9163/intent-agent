@@ -272,16 +272,6 @@ Your service logs the *raw Gemini output* for debugging.
 
 ---
 
-# 📦 Postman Collection
-
-A full Postman collection with all endpoints and example payloads is available.
-
-Ask:
-
-> “generate postman collection again”
-
----
-
 # 🔥 Production Considerations
 
 * Use **Gemini JSON Mode** for guaranteed parsing
@@ -294,7 +284,6 @@ Ask:
   * Fly.io
   * Docker
   * Local machine
-* Vercel not recommended unless using serverless pattern
 
 ---
 
