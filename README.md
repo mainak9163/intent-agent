@@ -2,7 +2,7 @@
 
 # 🚀 **Intent Classification Service**
 
-The **Intent Classification Service** converts natural-language monitoring requests into structured machine-readable *Intent Objects* using **Google Gemini 1.5 Flash**.
+The **Intent Classification Service** converts natural-language monitoring requests into structured machine-readable *Intent Objects* using **Google Gemini 2.5 Pro**.
 
 It serves as the **Intent Agent** in our AI-powered multi-agent observability pipeline:
 
