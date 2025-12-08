@@ -4,7 +4,7 @@
 
 The **Intent Classification Service** converts natural-language monitoring requests into structured machine-readable *Intent Objects* using **Google Gemini 1.5 Flash**.
 
-It serves as the **Intent Agent** in your AI-powered multi-agent observability pipeline:
+It serves as the **Intent Agent** in our AI-powered multi-agent observability pipeline:
 
 ```
 User Prompt → Intent Agent → Data Agent → Analysis Agent → Report Agent
@@ -14,7 +14,7 @@ This service is built with:
 
 * **Node.js + Express**
 * **TypeScript**
-* **Google Gemini 1.5 Flash**
+* **Google Gemini 2.5 Pro**
 * **Strict JSON-mode prompting**
 * **Error-safe output cleaning & validation**
 
@@ -28,20 +28,20 @@ api/
 ├── index.ts                   → app.listen entry point
 │
 ├── config/
-│   └── geminiClient.ts        → Gemini API client setup
+│   └── gemini-client.ts        → Gemini API client setup
 │
 ├── controllers/
 │   └── intent.controller.ts   → Handles classify requests
 │
 ├── services/
-│   └── intentService.ts       → Gemini-powered classification logic
+│   └── intent-service.ts       → Gemini-powered classification logic
 │
 ├── constants/
-│   └── intentSchema.ts        → Full taxonomy (6 classes + subclasses)
+│   └── intent-schema.ts        → Full taxonomy (6 classes + subclasses)
 │
 ├── middlewares/
-│   ├── errorHandler.ts
-│   └── requestLogger.ts
+│   ├── error-handler.ts
+│   └── request-logger.ts
 │
 └── types/
     └── intent.types.ts        → TS interfaces for request & response
@@ -195,7 +195,7 @@ Example response:
 The service uses:
 
 ```
-gemini-1.5-flash-latest
+gemini-2.5-pro
 ```
 
 with **strict JSON-only output**:
@@ -269,21 +269,6 @@ This happens if:
 * Model API returns 4xx or 5xx
 
 Your service logs the *raw Gemini output* for debugging.
-
----
-
-# 🔥 Production Considerations
-
-* Use **Gemini JSON Mode** for guaranteed parsing
-* Validate inputs using **Zod** or similar schema tools
-* Add rate limiting for protection
-* Host easily on:
-
-  * Render
-  * Railway
-  * Fly.io
-  * Docker
-  * Local machine
 
 ---
 
