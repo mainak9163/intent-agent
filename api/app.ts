@@ -1,6 +1,7 @@
 import express, { Application } from "express";
 import cors from "cors";
 import intentRoutes from "./routes/intent.routes";
+import analysisRoutes from "./routes/analysis.routes";
 import { requestLogger } from "./middlewares/request-logger";
 import { errorHandler } from "./middlewares/error-handler";
 
@@ -15,6 +16,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/v1/intent", intentRoutes);
+app.use("/v1/analysis", analysisRoutes);
 
 app.use(errorHandler);
 

@@ -1,3 +1,7 @@
-.vercel
+.vercel/
+.claude/
 .env
-.node_modules
+api/.env
+node_modules/
+dist/
+data/

@@ -1,6 +1,10 @@
 import app from "./app";
+import { initDatabase } from "./config/database";
+import env from "./config/env";
 
-const PORT = process.env.PORT || 3000;
+initDatabase();
+
+const PORT = env.port;
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
