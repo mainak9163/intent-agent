@@ -9,24 +9,48 @@ import env from './env';
  */
 
 const DB_PATH = env.dbPath || path.join(__dirname, '../../data/logs.db');
-const DATA_DIR = path.dirname(DB_PATH);
+let db: Database.Database | null = null;
 
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+function ensurePersistenceEnabled() {
+  if (!env.persistenceEnabled) {
+    throw new Error('Persistence is disabled. Set ENABLE_PERSISTENCE=true to use SQLite storage.');
+  }
 }
 
-export const db = new Database(DB_PATH);
+function createDatabase(): Database.Database {
+  const dataDir = path.dirname(DB_PATH);
 
-// Enable WAL mode for better performance
-db.pragma('journal_mode = WAL');
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+
+  const database = new Database(DB_PATH);
+  database.pragma('journal_mode = WAL');
+  return database;
+}
+
+export function getDatabase(): Database.Database {
+  ensurePersistenceEnabled();
+
+  if (!db) {
+    db = createDatabase();
+  }
+
+  return db;
+}
 
 /**
  * Initialize database schema
  */
 export function initDatabase() {
+  if (!env.persistenceEnabled) {
+    console.log('ℹ️  Persistence disabled; running in stateless mode');
+    return;
+  }
+
+  const database = getDatabase();
   // Logs table - stores parsed log entries
-  db.exec(`
+  database.exec(`
     CREATE TABLE IF NOT EXISTS logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       timestamp TEXT NOT NULL,
@@ -47,7 +71,7 @@ export function initDatabase() {
   `);
 
   // Analysis results table - stores AI analysis results
-  db.exec(`
+  database.exec(`
     CREATE TABLE IF NOT EXISTS analysis_results (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       intent_id TEXT NOT NULL,
@@ -62,7 +86,7 @@ export function initDatabase() {
   `);
 
   // Errors table - quick lookup for common errors
-  db.exec(`
+  database.exec(`
     CREATE TABLE IF NOT EXISTS errors (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       log_id INTEGER,
@@ -77,7 +101,7 @@ export function initDatabase() {
   `);
 
   // Create indexes for common queries
-  db.exec(`
+  database.exec(`
     CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp);
     CREATE INDEX IF NOT EXISTS idx_logs_level ON logs(level);
     CREATE INDEX IF NOT EXISTS idx_logs_source ON logs(source);
@@ -91,11 +115,24 @@ export function initDatabase() {
  * Get database statistics
  */
 export function getDbStats() {
+  if (!env.persistenceEnabled) {
+    return {
+      path: null,
+      persistenceEnabled: false,
+      logCount: { count: 0 },
+      analysisCount: { count: 0 },
+      errorCount: { count: 0 },
+      dbSize: 0,
+    };
+  }
+
+  const database = getDatabase();
   const stats = {
     path: DB_PATH,
-    logCount: db.prepare('SELECT COUNT(*) as count FROM logs').get() as { count: number },
-    analysisCount: db.prepare('SELECT COUNT(*) as count FROM analysis_results').get() as { count: number },
-    errorCount: db.prepare('SELECT COUNT(*) as count FROM errors').get() as { count: number },
+    persistenceEnabled: true,
+    logCount: database.prepare('SELECT COUNT(*) as count FROM logs').get() as { count: number },
+    analysisCount: database.prepare('SELECT COUNT(*) as count FROM analysis_results').get() as { count: number },
+    errorCount: database.prepare('SELECT COUNT(*) as count FROM errors').get() as { count: number },
     dbSize: fs.existsSync(DB_PATH) ? fs.statSync(DB_PATH).size : 0,
   };
 
@@ -106,9 +143,14 @@ export function getDbStats() {
  * Clear all data (useful for testing)
  */
 export function clearDatabase() {
-  db.exec('DELETE FROM logs');
-  db.exec('DELETE FROM analysis_results');
-  db.exec('DELETE FROM errors');
+  if (!env.persistenceEnabled) {
+    return;
+  }
+
+  const database = getDatabase();
+  database.exec('DELETE FROM logs');
+  database.exec('DELETE FROM analysis_results');
+  database.exec('DELETE FROM errors');
   console.log('🗑️  Database cleared');
 }
 
@@ -116,12 +158,17 @@ export function clearDatabase() {
  * Close database connection
  */
 export function closeDatabase() {
+  if (!db) {
+    return;
+  }
+
   db.close();
+  db = null;
   console.log('🔌 Database connection closed');
 }
 
 export default {
-  db,
+  getDatabase,
   initDatabase,
   getDbStats,
   clearDatabase,

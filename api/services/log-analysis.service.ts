@@ -1,15 +1,22 @@
 import { analyzeLogs } from '../agents/analysis.agent';
-import { fetchLogs, storeLogs } from '../agents/data.agent';
+import { fetchLogs, filterLogsInMemory, storeLogs } from '../agents/data.agent';
 import { classifyIntent } from '../agents/intent.agent';
 import { generateReport } from '../agents/report.agent';
-import { db } from '../config/database';
+import env from '../config/env';
+import { getDatabase } from '../config/database';
 import { parseLogs } from '../parsers/log-parser.service';
+import { ParsedLogEntry } from '../parsers/parser.interface';
 import {
   AnalyzeLogsRequest,
   AnalysisPipelineResponse,
 } from '../types/analysis.types';
 
 function persistAnalysisResult(result: AnalysisPipelineResponse) {
+  if (!env.persistenceEnabled) {
+    return;
+  }
+
+  const db = getDatabase();
   const insert = db.prepare(`
     INSERT INTO analysis_results (
       intent_id,
@@ -37,6 +44,7 @@ export async function runLogAnalysis(
   request: AnalyzeLogsRequest
 ): Promise<AnalysisPipelineResponse> {
   const intent = await classifyIntent(request);
+  let parsedEntries: ParsedLogEntry[] = [];
 
   let ingestion: AnalysisPipelineResponse['ingestion'];
   if (request.log_input?.content) {
@@ -45,7 +53,8 @@ export async function runLogAnalysis(
       forceFormat: request.log_input.format,
     });
 
-    const shouldPersist = request.persist_logs !== false;
+    parsedEntries = parsed.entries;
+    const shouldPersist = env.persistenceEnabled && request.persist_logs !== false;
     const storedCount = shouldPersist && parsed.entries.length > 0
       ? await storeLogs(parsed.entries)
       : 0;
@@ -59,11 +68,17 @@ export async function runLogAnalysis(
     };
   }
 
-  const data = await fetchLogs({
-    intent,
-    time_window: request.time_window,
-    limit: request.limit,
-  });
+  const data = parsedEntries.length > 0
+    ? filterLogsInMemory(parsedEntries, {
+        intent,
+        time_window: request.time_window,
+        limit: request.limit,
+      })
+    : await fetchLogs({
+        intent,
+        time_window: request.time_window,
+        limit: request.limit,
+      });
 
   const analysis = await analyzeLogs({
     intent,

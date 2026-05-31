@@ -1,4 +1,5 @@
-import { db } from '../config/database';
+import env from '../config/env';
+import { getDatabase } from '../config/database';
 import { IntentResponse } from './intent.agent';
 import { ParsedLogEntry } from '../parsers/parser.interface';
 
@@ -27,10 +28,82 @@ export interface DataFetchResult {
   };
 }
 
+function matchesIntentFilters(entry: ParsedLogEntry, intent: IntentResponse): boolean {
+  const levelMap: Record<string, string[]> = {
+    security: ['error', 'warn'],
+    performance: ['info', 'warn'],
+    availability: ['error', 'warn', 'critical'],
+    compliance: ['info', 'warn', 'error'],
+    usage: ['info'],
+    operational: ['info', 'warn', 'error'],
+  };
+
+  const levelsToInclude = levelMap[intent.intent_class_id];
+  if (levelsToInclude && levelsToInclude.length > 0) {
+    if (!entry.level || !levelsToInclude.includes(entry.level)) {
+      return false;
+    }
+  }
+
+  const logSources = intent.suggested_filters.log_sources;
+  if (logSources && logSources.length > 0) {
+    if (!entry.source || !logSources.includes(entry.source)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+export function filterLogsInMemory(
+  logs: ParsedLogEntry[],
+  query: DataQuery
+): DataFetchResult {
+  const { intent, time_window, limit = 10000 } = query;
+
+  let startTime: Date;
+  let endTime: Date;
+
+  if (time_window) {
+    startTime = new Date(time_window.start);
+    endTime = new Date(time_window.end);
+  } else {
+    endTime = new Date();
+    startTime = new Date(endTime.getTime() - 24 * 60 * 60 * 1000);
+  }
+
+  const filteredLogs = logs
+    .filter((entry) => {
+      const timestamp = new Date(entry.timestamp);
+      return (
+        timestamp >= startTime &&
+        timestamp <= endTime &&
+        matchesIntentFilters(entry, intent)
+      );
+    })
+    .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+    .slice(0, limit);
+
+  return {
+    logs: filteredLogs,
+    total_count: filteredLogs.length,
+    filtered_count: filteredLogs.length,
+    time_range: {
+      start: startTime.toISOString(),
+      end: endTime.toISOString(),
+    },
+  };
+}
+
 /**
  * Store parsed logs in database
  */
 export async function storeLogs(logs: ParsedLogEntry[]): Promise<number> {
+  if (!env.persistenceEnabled) {
+    return 0;
+  }
+
+  const db = getDatabase();
   const insert = db.prepare(`
     INSERT INTO logs (
       timestamp, level, message, source, format,
@@ -73,6 +146,11 @@ export async function storeLogs(logs: ParsedLogEntry[]): Promise<number> {
  * Fetch logs based on intent specifications
  */
 export async function fetchLogs(query: DataQuery): Promise<DataFetchResult> {
+  if (!env.persistenceEnabled) {
+    return filterLogsInMemory([], query);
+  }
+
+  const db = getDatabase();
   const { intent, time_window, limit = 10000 } = query;
 
   // Build WHERE clause based on intent filters
@@ -171,6 +249,11 @@ export async function getLogsByErrorType(
   errorType: string,
   limit: number = 100
 ): Promise<ParsedLogEntry[]> {
+  if (!env.persistenceEnabled) {
+    return [];
+  }
+
+  const db = getDatabase();
   const query = `
     SELECT l.* FROM logs l
     JOIN errors e ON l.id = e.log_id
@@ -203,6 +286,11 @@ export async function getLogsByErrorType(
  * Get recent errors
  */
 export async function getRecentErrors(hours: number = 24, limit: number = 100): Promise<any[]> {
+  if (!env.persistenceEnabled) {
+    return [];
+  }
+
+  const db = getDatabase();
   const startTime = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 
   const query = `
@@ -222,6 +310,17 @@ export async function getRecentErrors(hours: number = 24, limit: number = 100): 
  * Get statistics for logs
  */
 export async function getLogStats(timeRange?: { start: string; end: string }): Promise<any> {
+  if (!env.persistenceEnabled) {
+    return {
+      total_logs: { count: 0 },
+      by_level: [],
+      by_source: [],
+      by_status_code: [],
+      unique_ips: { count: 0 },
+    };
+  }
+
+  const db = getDatabase();
   let whereClause = '';
   const params: any[] = [];
 
@@ -259,6 +358,11 @@ export async function getLogStats(timeRange?: { start: string; end: string }): P
  * Clear all logs (useful for testing)
  */
 export function clearLogs(): number {
+  if (!env.persistenceEnabled) {
+    return 0;
+  }
+
+  const db = getDatabase();
   const result = db.prepare('DELETE FROM logs').run();
   db.prepare('DELETE FROM errors').run();
   return result.changes;

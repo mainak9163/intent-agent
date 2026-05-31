@@ -2,7 +2,7 @@
 
 # 🚀 **Intent Classification Service**
 
-The **Intent Classification Service** converts natural-language monitoring requests into structured machine-readable *Intent Objects* using **Google Gemini 2.5 Pro**.
+The **Intent Classification Service** converts natural-language monitoring requests into structured machine-readable *Intent Objects* using **OpenRouter-hosted LLMs**.
 
 It serves as the **Intent Agent** in our AI-powered multi-agent observability pipeline:
 
@@ -14,7 +14,7 @@ This service is built with:
 
 * **Node.js + Express**
 * **TypeScript**
-* **Google Gemini 2.5 Pro**
+* **OpenRouter**
 * **Strict JSON-mode prompting**
 * **Error-safe output cleaning & validation**
 
@@ -28,13 +28,13 @@ api/
 ├── index.ts                   → app.listen entry point
 │
 ├── config/
-│   └── gemini-client.ts        → Gemini API client setup
+│   └── openrouter.ts           → OpenRouter API client setup
 │
 ├── controllers/
 │   └── intent.controller.ts   → Handles classify requests
 │
 ├── services/
-│   └── intent-service.ts       → Gemini-powered classification logic
+│   └── intent-service.ts       → OpenRouter-powered classification logic
 │
 ├── constants/
 │   └── intent-schema.ts        → Full taxonomy (6 classes + subclasses)
@@ -62,7 +62,9 @@ npm install
 Create a `.env` file:
 
 ```env
-GEMINI_API_KEY=your_google_api_key_here
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+OPENROUTER_MODEL=nvidia/nemotron-3-super-120b-a12b:free
+ENABLE_PERSISTENCE=false
 PORT=3000
 ```
 
@@ -192,20 +194,7 @@ Example response:
 
 # 🧠 **How the Model Works**
 
-The service uses:
-
-```
-gemini-2.5-pro
-```
-
-with **strict JSON-only output**:
-
-```ts
-generationConfig: {
-  response_mime_type: "application/json",
-  temperature: 0.2
-}
-```
+The service uses the configured OpenRouter model with JSON-mode responses and low-temperature prompting for structured output.
 
 It also:
 
@@ -258,17 +247,17 @@ Errors return structured JSON:
 ```json
 {
   "success": false,
-  "message": "Gemini returned invalid JSON. Check logs for raw output."
+  "message": "OpenRouter returned invalid JSON. Check logs for raw output."
 }
 ```
 
 This happens if:
 
-* Gemini outputs markdown
+* the model outputs markdown
 * JSON is malformed
-* Model API returns 4xx or 5xx
+* the provider API returns 4xx or 5xx
 
-Your service logs the *raw Gemini output* for debugging.
+Your service logs the upstream output and error metadata for debugging.
 
 ---
 

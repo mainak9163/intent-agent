@@ -4,7 +4,7 @@ import { INTENT_CLASSES, ANALYSIS_TECHNIQUES } from '../constants/intent-schema'
 /**
  * Intent Agent
  * Converts natural-language monitoring requests into structured Intent Objects
- * Uses OpenRouter (LLaMA 3.3 8B or configured model) for classification
+ * Uses OpenRouter for classification
  */
 
 export interface IntentRequest {

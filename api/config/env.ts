@@ -18,7 +18,8 @@ export const env = {
   port: Number(process.env.PORT || 3000),
   openRouterApiKey: process.env.OPENROUTER_API_KEY || '',
   openRouterModel:
-    process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-8b-instruct:free',
+    process.env.OPENROUTER_MODEL || 'nvidia/nemotron-3-super-120b-a12b:free',
+  persistenceEnabled: process.env.ENABLE_PERSISTENCE === 'true',
   dbPath: process.env.DB_PATH,
 };
 
