@@ -33,8 +33,8 @@ function queueOpenRouterFailure(message: string) {
 before(async () => {
   fs.mkdirSync(testDataDir, { recursive: true });
 
-  const appModule = await import('../api/app');
-  const openRouterModule = await import('../api/config/openrouter');
+  const appModule = await import('../server/app');
+  const openRouterModule = await import('../server/config/openrouter');
 
   setOpenRouterHandlerForTests = openRouterModule.__setOpenRouterHandlerForTests;
 

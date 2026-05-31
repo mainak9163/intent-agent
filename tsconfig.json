@@ -11,7 +11,8 @@
     "forceConsistentCasingInFileNames": true
   },
   "include": [
-    "api/**/*.ts",
+    "api/index.ts",
+    "server/**/*.ts",
     "index.ts"
   ],
   "exclude": [

@@ -1,6 +1,6 @@
-import app from "./app";
-import { initDatabase } from "./config/database";
-import env from "./config/env";
+import app from "../server/app";
+import { initDatabase } from "../server/config/database";
+import env from "../server/config/env";
 
 initDatabase();
 
